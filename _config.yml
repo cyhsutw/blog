@@ -7,7 +7,7 @@ name:               "Cheng-Yu Hsu"
 description:        "Passionate mobile/web developer."
 
 # jekyll-seo-tag, see: http://www.rubydoc.info/gems/jekyll-seo-tag/1.2.0
-url:                "//www.cyhsu.me"
+url:                "http://www.cyhsu.me"
 author:             "cyhsutw"
 twitter:
   username:         "cyhsutw"
@@ -26,7 +26,7 @@ markdown:           kramdown
 # Navigation
 nav:
   - name:           "About"
-    href:           "//www.cyhsu.me/about"
+    href:           "http://www.cyhsu.me/about"
 
 # Sass
 sass:
