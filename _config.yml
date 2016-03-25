@@ -26,7 +26,7 @@ markdown:           kramdown
 # Navigation
 nav:
   - name:           "About"
-    href:           "http://www.cyhsu.me/about"
+    href:           "/about"
 
 # Sass
 sass:
