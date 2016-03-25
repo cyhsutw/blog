@@ -12,7 +12,7 @@ I'm a passionate mobile/web developer who loves to build applications to help pe
 
 ### Contact
 
-__Email__: m@cyhsu.me
+__Email__: [m@cyhsu.me](mailto:m@cyhsu.me)
 
 __GitHub__: [@cyhsutw](https://github.com/cyhsutw)
 
