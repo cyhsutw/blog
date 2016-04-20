@@ -1,10 +1,10 @@
 ---
-title: About
+layout: page
+title : About
 permalink: /about/
 ---
 
 I'm a passionate mobile/web developer who loves to build applications to help people enjoy their lives.
-
 
 ### App
 
