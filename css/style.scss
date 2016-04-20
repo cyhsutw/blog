@@ -340,12 +340,12 @@ pre {
 }
 .postDate {
   float: left;
-  text-transform: uppercase;
   font-family: "Source Sans Pro";
   font-size: 16px;
   font-weight: 300;
   letter-spacing: 2px;
   text-indent: 2px;
+  color: $grey-color-light;
 }
 .postTag {
   float: right;
@@ -353,7 +353,7 @@ pre {
 .postTitle {
   font-weight: 400;
   text-align: left;
-  letter-spacing: 3px;
+  letter-spacing: 1px;
   text-indent: 3px;
 }
 /**
