@@ -1,6 +1,4 @@
-# A sample Gemfile
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
-gem 'jekyll'
-gem 'jekyll-seo-tag'
-# gem "rails"
+gem 'github-pages', group: :jekyll_plugins
+gem 'jekyll-compose', group: :jekyll_plugins

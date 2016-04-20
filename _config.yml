@@ -1,51 +1,20 @@
-# # # # # # # #
-#   K i k o   #
-# # # # # # # #
+# Welcome to Jekyll!
+#
+# This config file is meant for settings that affect your whole blog, values
+# which you are expected to set up once and rarely need to edit after that.
+# For technical reasons, this file is *NOT* reloaded automatically when you use
+# 'jekyll serve'. If you change this file, please restart the server process.
 
-# Basic
-name:               "Cheng-Yu Hsu"
-description:        "Passionate mobile/web developer."
+# Site settings
+title: "project: et cetera."
+email: m@cyhsu.me
+description: ""
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "http://www.cyhsu.me" # the base hostname & protocol for your site
+twitter_username: cyhsutw
+github_username:  cyhsutw
 
-# jekyll-seo-tag, see: http://www.rubydoc.info/gems/jekyll-seo-tag/1.2.0
-url:                "http://www.cyhsu.me"
-author:             "cyhsutw"
-twitter:
-  username:         "cyhsutw"
-#facebook:
-#  app_id:           1234
-#    publisher:      1234
-
-# URL
-baseurl:            ""
-#baseurl:            "" #For Root Domain
-permalink:          /:year/:month/:day/:title/
-
-# Markdown
-markdown:           kramdown
-
-# Navigation
-nav:
-  - name:           "About"
-    href:           "/about"
-
-# Sass
-sass:
-  style:            :compressed
-
-# Scopes
-defaults:
-  -
-    scope:
-      path:         ""
-      type:         "pages"
-    values:
-      layout:       "page"
-  -
-    scope:
-      path:         ""
-      type:         "posts"
-    values:
-      layout:       "post"
-
-gems:
-  - jekyll-seo-tag
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  extensions: ["tables", "autolink", "strikethrough", "space_after_headers", "with_toc_data", "fenced_code_blocks"]
