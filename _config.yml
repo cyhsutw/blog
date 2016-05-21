@@ -13,8 +13,17 @@ baseurl: "" # the subpath of your site, e.g. /blog
 url: "http://www.cyhsu.me" # the base hostname & protocol for your site
 twitter_username: cyhsutw
 github_username:  cyhsutw
+permalink: pretty
+comments: true
+analytics:
+  provider: google
+  google:
+    tracking_id: 'UA-78054212-1'
 
 kramdown:
   input: GFM
   syntax_highlighter: rouge
   extensions: ["tables", "autolink", "strikethrough", "space_after_headers", "with_toc_data", "fenced_code_blocks"]
+
+gems:
+  - jekyll-feed

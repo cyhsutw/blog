@@ -123,6 +123,7 @@ PLATFORMS
 DEPENDENCIES
   github-pages
   jekyll-compose
+  jekyll-feed
 
 BUNDLED WITH
    1.12.3

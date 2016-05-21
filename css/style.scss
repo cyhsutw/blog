@@ -57,13 +57,17 @@ $on-laptop:        800px;
  * Reset some basic elements
  */
 body, h1, h2, h3, h4, h5, h6,
-p, blockquote, pre, hr,
+p, blockquote, pre,
 dl, dd, ol, ul, figure {
     margin: 0;
     padding: 0;
 }
 
-
+hr {
+  border: none;
+  border-top: 1px solid #dedede;
+  margin: 2em 0;
+}
 
 /**
  * Basic styling
@@ -155,20 +159,16 @@ a {
 
     &:hover {
         color: black !important;
-        border-bottom: 1px dotted black ;
     }
 
     &.page-link{
       &:hover {
           color: $text-color;
-          border-bottom: 1px dotted black ;
       }
     }
     &.postLink{
       color: black !important;
       &:hover {
-
-          border-bottom: 1px dotted black ;
       }
 
       &:visited {
@@ -178,8 +178,6 @@ a {
     &.post-title-link{
       color: black !important;
       &:hover {
-
-          border-bottom: 1px dotted black !important ;
       }
 
       &:visited {
@@ -563,7 +561,7 @@ pre {
   margin: $spacing-unit auto;
 }
 .post-title {
-  font-size: 62px;
+  font-size: 48px;
 
   text-align: center;
   font-family: "Source Sans Pro";
@@ -574,7 +572,7 @@ pre {
 }
 .post-content {
   margin-bottom: $spacing-unit;
-  padding-bottom: 3em !important;
+  padding-bottom: 1em !important;
   p {
     font-size: 18px;
   }
@@ -596,4 +594,10 @@ pre {
       font-size: 18px;
     }
   }
+}
+
+.notes {
+  font-size: 13px;
+  color: $grey-color;
+  cursor: default;
 }
