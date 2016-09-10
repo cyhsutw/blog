@@ -1,12 +1,16 @@
 ---
 # Only the main Sass file needs front matter (the dashes are enough)
 ---
+
 @charset "utf-8";
 
 @import "syntax.css";
 
 // Our variables
-$base-font-family: "Source Sans Pro", Helvetica, Arial, sans-serif;
+$base-font-family: -apple-system, BlinkMacSystemFont,
+  "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell",
+  "Fira Sans", "Droid Sans", "Helvetica Neue",
+  sans-serif;
 $base-font-size:   16px;
 $base-font-weight: 400;
 $small-font-size:  $base-font-size * 0.875;
@@ -150,16 +154,9 @@ h1, h2, h3, h4, h5, h6 {
  * Links
  */
 a {
-    color: #aaa !important;
+    color: $text-color;
     text-decoration: none;
 
-    &:visited {
-        color: darken($brand-color, 15%);
-    }
-
-    &:hover {
-        color: black !important;
-    }
 
     &.page-link{
       &:hover {
@@ -170,23 +167,31 @@ a {
       color: black !important;
       &:hover {
       }
-
-      &:visited {
-          color: "crimson" !important;
-      }
     }
     &.post-title-link{
-      color: black !important;
-      &:hover {
-      }
+      border: none;
+      transition: none;
 
-      &:visited {
-          color: "crimson" !important;
+      &:hover {
+        color: $text-color;
       }
     }
 }
 
+.post-content {
+  p {
+    a {
+      border-bottom: 1px dashed $text-color;
 
+      transition: all 0.3s ease;
+
+      &:hover {
+          color: $brand-color;
+          border-bottom: 1px dashed $brand-color;
+      }
+    }
+  }
+}
 
 /**
  * Blockquotes
@@ -287,7 +292,6 @@ pre {
 }
 
 .post {
-  font-family: "Source Sans Pro";
   font-size: 18px;
   font-weight: 300;
   padding-top: 0;
@@ -338,7 +342,6 @@ pre {
 }
 .postDate {
   text-align: left;
-  font-family: "Source Sans Pro";
   font-size: 11px;
   font-weight: 300;
   letter-spacing: 2px;
@@ -381,16 +384,12 @@ pre {
   font-size: 48px;
   font-family: 'Rochester', cursive;
   margin-top: 1em;
-  &,
-  &:visited {
-    color: $grey-color-dark;
-  }
+  color: $grey-color-dark;
 }
 .site-description {
   font-size: 14px;
   letter-spacing: 2px;
   text-indent: 6px;
-  font-family: 'Josefin Sans';
 }
 .exclamationMark {
   padding-left: 2em;
@@ -402,7 +401,6 @@ pre {
   font-size: 14px;
   letter-spacing: 2px;
   text-indent: 6px;
-  font-family: 'Josefin Sans';
   font-weight: 300;
   padding-top: 2em;
   text-align: center;
@@ -411,12 +409,10 @@ pre {
   text-transform: uppercase;
   letter-spacing: 2px;
   text-indent: 2px;
-  font-family: "Source Sans Pro";
   font-size: 12px;
 }
 .page-tagline {
   font-size: 18px;
-  font-family: "Source Sans Pro";
   color: rgb(170, 170, 170);
   text-align: center;
   text-transform: lowercase;
@@ -490,9 +486,7 @@ pre {
   list-style: none;
   margin-left: 0;
 }
-.small-site-title {
-  font-family: "Source Sans Pro";
-}
+
 .footer-col-wrapper {
   font-size: 15px;
   color: $grey-color;
@@ -500,7 +494,6 @@ pre {
   @extend %clearfix;
 }
 .footer-content {
-  font-family: "Josefin Sans";
   font-weight: 300;
   letter-spacing: 1px;
 }
@@ -565,6 +558,7 @@ pre {
 .post-link {
   display: block;
   font-size: 24px;
+  border: none;
 }
 /**
  * Posts
@@ -573,11 +567,10 @@ pre {
   margin: $spacing-unit auto;
 }
 .post-title {
-  font-size: 48px;
+  font-size: 36px;
 
   text-align: center;
-  font-family: "Source Sans Pro";
-  font-weight: 900;
+  font-weight: 300;
   @include media-query($on-laptop) {
     font-size: 36px;
   }
