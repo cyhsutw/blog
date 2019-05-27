@@ -10,7 +10,7 @@ title: "project: et cetera."
 email: m@cyhsu.me
 description: ""
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "http://www.cyhsu.me" # the base hostname & protocol for your site
+url: 'https://blog.cyhsu.me' # the base hostname & protocol for your site
 twitter_username: cyhsutw
 github_username:  cyhsutw
 permalink: pretty
@@ -18,7 +18,7 @@ comments: true
 analytics:
   provider: google
   google:
-    tracking_id: 'UA-78054212-1'
+    tracking_id: 'UA-78054212-4'
 
 kramdown:
   input: GFM
