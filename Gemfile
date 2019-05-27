@@ -5,4 +5,5 @@ gem 'jekyll-feed'
 group :jekyll_plugins do
   gem 'github-pages'
   gem 'jekyll-compose'
+  gem 'jekyll-polyglot'
 end

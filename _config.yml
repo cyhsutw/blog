@@ -15,6 +15,12 @@ twitter_username: cyhsutw
 github_username:  cyhsutw
 permalink: pretty
 comments: true
+
+languages: ['en', 'zh']
+default_lang: 'en'
+exclude_from_localization: ['javascript', 'images', 'css']
+parallel_localization: true
+
 analytics:
   provider: google
   google:
@@ -25,5 +31,6 @@ kramdown:
   syntax_highlighter: rouge
   extensions: ["tables", "autolink", "strikethrough", "space_after_headers", "with_toc_data", "fenced_code_blocks"]
 
-gems:
+plugins:
   - jekyll-feed
+  - jekyll-polyglot
