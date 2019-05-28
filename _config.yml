@@ -24,7 +24,7 @@ parallel_localization: true
 analytics:
   provider: google
   google:
-    tracking_id: 'UA-78054212-4'
+    tracking_id: 
 
 kramdown:
   input: GFM
