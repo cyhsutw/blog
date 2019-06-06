@@ -17,14 +17,14 @@ permalink: pretty
 comments: true
 
 languages: ['en', 'zh']
-default_lang: 'en'
+default_lang: 'zh'
 exclude_from_localization: ['javascript', 'images', 'css']
 parallel_localization: true
 
 analytics:
   provider: google
   google:
-    tracking_id: 
+    tracking_id:
 
 kramdown:
   input: GFM
