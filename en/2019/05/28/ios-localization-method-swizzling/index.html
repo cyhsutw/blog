@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>利用 Method Swizzling 實作 iOS App 內切換語言功能</title>
+  <meta name="description" content="前陣子工作時，替公司開發了一套工具，實作了 app 內切換語言的功能。">
+  <link href='https://fonts.googleapis.com/css?family=Josefin+Sans:400,600,700,300' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Rochester' rel='stylesheet' type='text/css'>
+  <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css" rel="stylesheet">
+
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="canonical" href="https://blog.cyhsu.me/en/2019/05/28/ios-localization-method-swizzling/">
+  <link rel="alternate" type="application/rss+xml" title="project: et cetera." href="https://blog.cyhsu.me/en/feed.xml">
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-78054212-4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-78054212-4');
+</script>
+
+</head>
+
+
+  <body>
+
+    
+<div class="wrapper">
+  <center>
+    <a href="/en/">
+      <div class="site-title">project: et cetera.</div>
+    </a>
+  </center>
+</div>
+<div class="wrapper">
+  <!-- <div class="trigger site-navigation">
+    <span class="exclamationMark">/</span>
+    <a class="page-link" href="/en/">HOME</a>
+    <span class="exclamationMark">/</span>
+
+    
+      
+        <a class="page-link"
+           href="/en/about/">
+           About
+         </a>
+         <span class="exclamationMark">/</span>
+      
+    
+      
+    
+      
+    
+  </div> -->
+</div>
+
+
+    <div class="page-content">
+      <div class="wrapper">
+        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
+
+  <header class="post-header">
+    <h1 class="post-title" itemprop="name headline"><a class="post-title-link"  href="/en/2019/05/28/ios-localization-method-swizzling/">利用 Method Swizzling 實作 iOS App 內切換語言功能</a></h1>
+  <center>  <p class="post-meta"><time datetime="2019-05-28T00:00:00+00:00" itemprop="datePublished">May 28, 2019</time></p>
+    
+   </center>
+  </header>
+
+  <div class="post-content" itemprop="articleBody">
+    <p>前陣子工作時，替公司開發了一套工具，實作了 app 內切換語言的功能。</p>
+
+<p>一般來說，在 iOS app 內語言都是跟隨手機系統語言，但是會有滿多用戶會希望手機語言與 app 內語言不同。</p>
+
+<p>網路上有許多第三方套件可以做到 app 內換語言，但使用方式多半會與內建的 <code class="highlighter-rouge">NSLocalizedString</code> 不同，對於既有的程式碼，改動成本相對高。</p>
+
+<p>這時我們可以使用 <a href="https://nshipster.com/method-swizzling/">Method Swizzling</a> 這個技術來替換 <code class="highlighter-rouge">NSLocalizedString</code> 底層的實作方式減少改動成本。</p>
+
+<h2 id="多國語言字串">多國語言字串</h2>
+
+<h3 id="nslocalizedstring-簡介"><code class="highlighter-rouge">NSLocalizedString</code> 簡介</h3>
+
+<p>在 iOS app 中，可以透過 <a href="https://developer.apple.com/documentation/foundation/nslocalizedstring"><code class="highlighter-rouge">NSLocalizedString</code></a> 來讀取 app 內所包裝的不同語言字串。</p>
+
+<p>舉例來說，如果我們有以下 <code class="highlighter-rouge">.strings</code> 檔：</p>
+
+<div class="language-c highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// Localizable.strings (en)
+</span><span class="s">"phone_number"</span> <span class="o">=</span> <span class="s">"Phone Number"</span><span class="p">;</span>
+
+<span class="c1">// Localizable.strings (zh-Hant)
+</span><span class="s">"phone_number"</span> <span class="o">=</span> <span class="s">"電話號碼"</span><span class="p">;</span>
+</code></pre></div></div>
+
+<p>然後我們就可以在 app 內使用以下語法對 <code class="highlighter-rouge">phoneNumberLabel</code> 進行文字的設定：</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">phoneNumberLabel</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="kt">NSLocalizedString</span><span class="p">(</span><span class="s">"phone_number"</span><span class="p">,</span> <span class="nv">comment</span><span class="p">:</span> <span class="s">""</span><span class="p">)</span>
+</code></pre></div></div>
+
+<p>這時如果使用者手機語言為正體中文，<code class="highlighter-rouge">phoneNumberLabel</code> 就會顯示 <code class="highlighter-rouge">電話號碼</code>；同理，若手機語言為英文，則會顯示 <code class="highlighter-rouge">Phone Number</code>。</p>
+
+<h3 id="ios-系統如何選擇顯示語言">iOS 系統如何選擇顯示語言</h3>
+
+<p>一般來說，從 iOS 系統會從 app 有支援的語言中，找出第一個在系統語言偏好列表中的語言的作為 app 內使用的語言。但如果沒有共通的語言的話則會使用<strong>開發語言</strong>。</p>
+
+<h4 id="舉幾個例子">舉幾個例子</h4>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align: left">手機語言偏好</th>
+      <th style="text-align: left">App 支援語言</th>
+      <th style="text-align: left">App 內使用語言</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align: left">英文</td>
+      <td style="text-align: left">英文（開發語言）、正體中文</td>
+      <td style="text-align: left">英文</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">正體中文</td>
+      <td style="text-align: left">英文（開發語言）、正體中文</td>
+      <td style="text-align: left">正體中文</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">德文、正體中文、英文</td>
+      <td style="text-align: left">英文（開發語言）、正體中文</td>
+      <td style="text-align: left">正體中文</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">德文、英文、正體中文</td>
+      <td style="text-align: left">英文（開發語言）、正體中文</td>
+      <td style="text-align: left">英文</td>
+    </tr>
+    <tr>
+      <td style="text-align: left">法文</td>
+      <td style="text-align: left">英文（開發語言）、正體中文</td>
+      <td style="text-align: left">英文 = <em>開發語言</em></td>
+    </tr>
+  </tbody>
+</table>
+
+<p><br /></p>
+
+<p>程式上來說，我們可以透過 <a href="https://developer.apple.com/documentation/foundation/bundle/1413220-preferredlocalizations"><code class="highlighter-rouge">Bundle.preferredLocalizations</code></a> 取得系統決定的語言。</p>
+
+<p>使用方法如下：</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">let</span> <span class="nv">currentLanguage</span> <span class="o">=</span> <span class="kt">Bundle</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="n">preferredLocalizations</span><span class="o">.</span><span class="n">first</span>
+</code></pre></div></div>
+
+<h2 id="解構-nslocalizedstring">解構 NSLocalizedString</h2>
+
+<h3 id="objective-c-中的-nslocalizedstring">Objective-C 中的 NSLocalizedString</h3>
+<p>根據 Apple 所提供的<a href="https://developer.apple.com/documentation/foundation/nslocalizedstring">文件</a>，在 Objective-C 裡面，<code class="highlighter-rouge">NSLocalizedString</code> 是個 macro。它的實作則是呼叫 main bundle 的 <a href="https://developer.apple.com/documentation/foundation/nsbundle/1417694-localizedstringforkey?language=objc"><code class="highlighter-rouge">localizedStringForKey:value:table:</code></a></p>
+
+<blockquote>
+  <p><strong>Return Value</strong></p>
+
+  <p>The result of invoking localizedStringForKey:value:table: on the main bundle passing nil as the table.</p>
+</blockquote>
+
+<h3 id="swift-中的-nslocalizedstring">Swift 中的 NSLocalizedString</h3>
+
+<p>Swift 中的 <code class="highlighter-rouge">NSLocalizedString</code> 則是一個 global function：</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">func</span> <span class="kt">NSLocalizedString</span><span class="p">(</span><span class="n">_</span> <span class="nv">key</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span>
+						   <span class="nv">tableName</span><span class="p">:</span> <span class="kt">String</span><span class="p">?</span> <span class="o">=</span> <span class="kc">nil</span><span class="p">,</span>
+						   <span class="nv">bundle</span><span class="p">:</span> <span class="kt">Bundle</span> <span class="o">=</span> <span class="kt">Bundle</span><span class="o">.</span><span class="n">main</span><span class="p">,</span>
+						   <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="s">""</span><span class="p">,</span>
+						   <span class="nv">comment</span><span class="p">:</span> <span class="kt">String</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kt">String</span>
+</code></pre></div></div>
+
+<p>同樣根據 Apple 提供的<a href="https://developer.apple.com/documentation/foundation/1418095-nslocalizedstring">文件</a>，也是從 main bundle 中拿取字串。</p>
+
+<p>所以我們可以透過 swizzle <a href="https://developer.apple.com/documentation/foundation/bundle/1417694-localizedstring"><code class="highlighter-rouge">Bundle.localizedString(forKey:value:table:)</code></a> 的實作內容來達成 swizzling <code class="highlighter-rouge">NSLocalizedString</code> 的效果。</p>
+
+<h2 id="實作-app-內切換語言">實作 App 內切換語言</h2>
+
+<p>首先，我們需要實作可以讓使用者從 app 有支援的語言中選取一種的介面。</p>
+
+<p>這部分就不在此贅述，這邊列出幾個實作重點：</p>
+
+<ul>
+  <li><code class="highlighter-rouge">Bundle.main.localizations</code> → 取得 app 有支援的語言代碼列表</li>
+  <li><code class="highlighter-rouge">Locale(identifier: langCode).localizedString(forLanguageCode: langCode)</code> → 將改語言以該語言的字串顯示，例如：
+    <ul>
+      <li>langCode = en → English</li>
+      <li>langCode = fr → français</li>
+    </ul>
+  </li>
+</ul>
+
+<p>在此假設使用者在上述介面中選擇偏好的語言會被存入 <code class="highlighter-rouge">preferredLanguage</code> 這個變數中。</p>
+
+<p>如果使用者沒有手動選擇，則這個變數的值為 <code class="highlighter-rouge">Bundle.main.preferredLocalizations.first!</code>，也就是系統所選用的語言。</p>
+
+<h3 id="取得特定語言的字串">取得特定語言的字串</h3>
+
+<p>因為 <code class="highlighter-rouge">.strings</code> 檔案是放置在 <code class="highlighter-rouge">.lproj</code> 資料夾底下，所以我們可以透過指定 Bundle 拿取資源的路徑來達成取得指定語言字串的效果。</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">extension</span> <span class="kt">Bundle</span> <span class="p">{</span>
+    <span class="kd">func</span> <span class="nf">localizedString</span><span class="p">(</span><span class="n">forKey</span> <span class="nv">key</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="n">language</span> <span class="nv">languageCode</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span><span class="p">?,</span> <span class="n">table</span> <span class="nv">tableName</span><span class="p">:</span> <span class="kt">String</span><span class="p">?)</span> <span class="o">-&gt;</span> <span class="kt">String</span> <span class="p">{</span>
+        <span class="k">guard</span>
+            <span class="k">let</span> <span class="nv">lprojPath</span> <span class="o">=</span> <span class="nf">path</span><span class="p">(</span><span class="nv">forResource</span><span class="p">:</span> <span class="n">languageCode</span><span class="p">,</span> <span class="nv">ofType</span><span class="p">:</span> <span class="s">"lproj"</span><span class="p">),</span>
+            <span class="k">let</span> <span class="nv">bundle</span> <span class="o">=</span> <span class="kt">Bundle</span><span class="p">(</span><span class="nv">path</span><span class="p">:</span> <span class="n">lprojPath</span><span class="p">)</span>
+        <span class="k">else</span> <span class="p">{</span> <span class="nf">fatalError</span><span class="p">(</span><span class="s">"Language '</span><span class="se">\(</span><span class="n">languageCode</span><span class="se">)</span><span class="s">' is not supported"</span><span class="p">)</span> <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">bundle</span><span class="o">.</span><span class="nf">localizedString</span><span class="p">(</span><span class="nv">forKey</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="nv">table</span><span class="p">:</span> <span class="n">tableName</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>這樣一來，我們就可以透過以下方式取得 <code class="highlighter-rouge">preferredLanguage</code> 所指定語言版本的字串：</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="n">preferredLanguage</span> <span class="o">=</span> <span class="s">"zh-Hant"</span>
+<span class="kt">Bundle</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="nf">localizedString</span><span class="p">(</span><span class="nv">forKey</span><span class="p">:</span> <span class="s">"phone_number"</span><span class="p">,</span> <span class="nv">language</span><span class="p">:</span> <span class="n">preferredLanguage</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="kc">nil</span><span class="p">,</span> <span class="nv">table</span><span class="p">:</span> <span class="kc">nil</span><span class="p">)</span> <span class="c1">// "電話號碼"</span>
+
+<span class="n">preferredLanguage</span> <span class="o">=</span> <span class="s">"en"</span>
+<span class="kt">Bundle</span><span class="o">.</span><span class="n">main</span><span class="o">.</span><span class="nf">localizedString</span><span class="p">(</span><span class="nv">forKey</span><span class="p">:</span> <span class="s">"phone_number"</span><span class="p">,</span> <span class="nv">language</span><span class="p">:</span> <span class="n">preferredLanguage</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="kc">nil</span><span class="p">,</span> <span class="nv">table</span><span class="p">:</span> <span class="kc">nil</span><span class="p">)</span> <span class="c1">// "Phone Number"</span>
+</code></pre></div></div>
+
+<h3 id="定義新的-nslocalizedstring">定義新的 <code class="highlighter-rouge">NSLocalizedString</code></h3>
+
+<p>先前提到 <code class="highlighter-rouge">NSLocalizedString</code> 其實就是呼叫 <code class="highlighter-rouge">Bundle.main.localizedString(forKey:value:table:)</code> 的結果。</p>
+
+<p>搭配前一小節內容，可以先定義出會參考 <code class="highlighter-rouge">preferredLanguage</code> 的 <code class="highlighter-rouge">localizedString(forKey:value:table:)</code> 版本。</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">extension</span> <span class="kt">Bundle</span> <span class="p">{</span>
+    <span class="kd">@objc</span> <span class="kd">private</span> <span class="kd">func</span> <span class="nf">modifiedLocalizedString</span><span class="p">(</span><span class="n">forKey</span> <span class="nv">key</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span><span class="p">?,</span> <span class="nv">table</span><span class="p">:</span> <span class="kt">String</span><span class="p">?)</span> <span class="o">-&gt;</span> <span class="kt">String</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nf">localizedString</span><span class="p">(</span><span class="nv">forKey</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span> <span class="nv">language</span><span class="p">:</span> <span class="n">preferredLanguage</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="nv">table</span><span class="p">:</span> <span class="n">table</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<p>接下來我們只需要將 <code class="highlighter-rouge">modifiedLocalizedString(forKey:value:table:)</code> 以及 <code class="highlighter-rouge">localizedString(forKey:value:table:)</code> 利用 method swizzling 調換其中的實作內容，就可以使 <code class="highlighter-rouge">NSLocalizedString</code> 根據 <code class="highlighter-rouge">preferredLanguage</code> 回傳對應語言的字串了。</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">extension</span> <span class="kt">Bundle</span> <span class="p">{</span>
+	<span class="kd">class</span> <span class="kd">func</span> <span class="nf">swizzleLocalizedStringMethodImplementations</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="nv">cls</span><span class="p">:</span> <span class="kt">AnyClass</span> <span class="o">=</span> <span class="k">self</span>
+        <span class="k">let</span> <span class="nv">originalMethod</span> <span class="o">=</span> <span class="nf">class_getInstanceMethod</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="kd">#selector(</span><span class="nf">localizedString(forKey:value:table:)</span><span class="kd">)</span><span class="p">)</span><span class="o">!</span>
+        <span class="k">let</span> <span class="nv">modifiedMethod</span> <span class="o">=</span> <span class="nf">class_getInstanceMethod</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="kd">#selector(</span><span class="nf">modifiedLocalizedString(forKey:value:table:)</span><span class="kd">)</span><span class="p">)</span><span class="o">!</span>
+        <span class="nf">method_exchangeImplementations</span><span class="p">(</span><span class="n">originalMethod</span><span class="p">,</span> <span class="n">modifiedMethod</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="還沒結束">還沒結束！</h3>
+
+<p>一旦呼叫了 <code class="highlighter-rouge">swizzleLocalizedStringMethodImplementations</code>， 原本<code class="highlighter-rouge">localizedString(forKey:value:table:)</code> 的實作內容會與 <code class="highlighter-rouge">modifiedLocalizedString(forKey:value:table:)</code> 的內容互換。</p>
+
+<p>所以必須修改 <code class="highlighter-rouge">localizedString(forKey:language:value:table)</code> 讓其呼叫原始的 <code class="highlighter-rouge">localizedString(forKey:value:table:)</code>，否則<strong>會有無窮迴圈產生</strong>。</p>
+
+<div class="language-diff highlighter-rouge"><div class="highlight"><pre class="highlight"><code>  func localizedString(forKey key: String, language languageCode: String, value: String?, table tableName: String?) -&gt; String {
+      guard
+          let lprojPath = path(forResource: languageCode, ofType: "lproj"),
+          let bundle = Bundle(path: lprojPath)
+      else { fatalError("Language '\(languageCode)' is not supported") }
+
+<span class="gd">-     return bundle.localizedString(forKey: key, value: value, table: tableName)
+</span><span class="gi">+     return modifiedLocalizedString(forKey: key, value: value, table: tableName)
+</span>  }
+</code></pre></div></div>
+
+<p>這樣一來才算是真正完成。</p>
+
+<p>完成後程式碼如下：</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kd">extension</span> <span class="kt">Bundle</span> <span class="p">{</span>
+    <span class="kd">class</span> <span class="kd">func</span> <span class="nf">swizzleLocalizedStringMethodImplementations</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">let</span> <span class="nv">cls</span><span class="p">:</span> <span class="kt">AnyClass</span> <span class="o">=</span> <span class="k">self</span>
+        <span class="k">let</span> <span class="nv">originalMethod</span> <span class="o">=</span> <span class="nf">class_getInstanceMethod</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="kd">#selector(</span><span class="nf">localizedString(forKey:value:table:)</span><span class="kd">)</span><span class="p">)</span><span class="o">!</span>
+        <span class="k">let</span> <span class="nv">modifiedMethod</span> <span class="o">=</span> <span class="nf">class_getInstanceMethod</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="kd">#selector(</span><span class="nf">modifiedLocalizedString(forKey:value:table:)</span><span class="kd">)</span><span class="p">)</span><span class="o">!</span>
+        <span class="nf">method_exchangeImplementations</span><span class="p">(</span><span class="n">originalMethod</span><span class="p">,</span> <span class="n">modifiedMethod</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="kd">@objc</span> <span class="kd">private</span> <span class="kd">func</span> <span class="nf">modifiedLocalizedString</span><span class="p">(</span><span class="n">forKey</span> <span class="nv">key</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span><span class="p">?,</span> <span class="nv">table</span><span class="p">:</span> <span class="kt">String</span><span class="p">?)</span> <span class="o">-&gt;</span> <span class="kt">String</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nf">localizedString</span><span class="p">(</span><span class="nv">forKey</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span> <span class="nv">language</span><span class="p">:</span> <span class="n">preferredLanguage</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="nv">table</span><span class="p">:</span> <span class="n">table</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="kd">private</span> <span class="kd">func</span> <span class="nf">localizedString</span><span class="p">(</span><span class="n">forKey</span> <span class="nv">key</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="n">language</span> <span class="nv">languageCode</span><span class="p">:</span> <span class="kt">String</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="kt">String</span><span class="p">?,</span> <span class="n">table</span> <span class="nv">tableName</span><span class="p">:</span> <span class="kt">String</span><span class="p">?)</span> <span class="o">-&gt;</span> <span class="kt">String</span> <span class="p">{</span>
+        <span class="k">guard</span>
+            <span class="k">let</span> <span class="nv">lprojPath</span> <span class="o">=</span> <span class="nf">path</span><span class="p">(</span><span class="nv">forResource</span><span class="p">:</span> <span class="n">languageCode</span><span class="p">,</span> <span class="nv">ofType</span><span class="p">:</span> <span class="s">"lproj"</span><span class="p">),</span>
+            <span class="k">let</span> <span class="nv">bundle</span> <span class="o">=</span> <span class="kt">Bundle</span><span class="p">(</span><span class="nv">path</span><span class="p">:</span> <span class="n">lprojPath</span><span class="p">)</span>
+            <span class="k">else</span> <span class="p">{</span> <span class="nf">fatalError</span><span class="p">(</span><span class="s">"Language '</span><span class="se">\(</span><span class="n">languageCode</span><span class="se">)</span><span class="s">' is not supported"</span><span class="p">)</span> <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">bundle</span><span class="o">.</span><span class="nf">modifiedLocalizedString</span><span class="p">(</span><span class="nv">forKey</span><span class="p">:</span> <span class="n">key</span><span class="p">,</span> <span class="nv">value</span><span class="p">:</span> <span class="n">value</span><span class="p">,</span> <span class="nv">table</span><span class="p">:</span> <span class="n">tableName</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h3 id="呼叫-swizzlelocalizedstringmethodimplementations">呼叫 <code class="highlighter-rouge">swizzleLocalizedStringMethodImplementations</code></h3>
+
+<p>最後，在 App 一啓動時套用剛才所寫的實作置換，就大功告成。</p>
+
+<div class="language-swift highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c1">// AppDelegate.swift</span>
+<span class="kd">class</span> <span class="kt">AppDelegate</span><span class="p">:</span> <span class="kt">UIResponder</span><span class="p">,</span> <span class="kt">UIApplicationDelegate</span> <span class="p">{</span>
+	<span class="o">...</span>
+	<span class="kd">func</span> <span class="nf">application</span><span class="p">(</span><span class="n">_</span> <span class="nv">application</span><span class="p">:</span> <span class="kt">UIApplication</span><span class="p">,</span> <span class="n">didFinishLaunchingWithOptions</span> <span class="nv">launchOptions</span><span class="p">:</span> <span class="p">[</span><span class="kt">UIApplication</span><span class="o">.</span><span class="kt">LaunchOptionsKey</span><span class="p">:</span> <span class="kt">Any</span><span class="p">]?)</span> <span class="o">-&gt;</span> <span class="kt">Bool</span> <span class="p">{</span>
+		<span class="kt">Bundle</span><span class="o">.</span><span class="nf">swizzleLocalizedStringMethodImplementations</span><span class="p">()</span>
+		<span class="o">...</span>
+		<span class="k">return</span> <span class="kc">true</span>
+    <span class="p">}</span>
+	<span class="o">...</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h1 id="小結">小結</h1>
+
+<p>除非不得已，在開發中不建議使用 method swizzling 或是其他 Objective-C runtime 相關功能。
+這些工具自然好用，但是會減少程式碼的易讀性，同時也失去了透過編譯器檢查型別等等好處。
+仔細想想，通常都可以有更好解決方式。</p>
+
+<p>至於我會選用這樣的方式實作，主要是希望 app 其他部分的程式碼可以維持與系統預設語法相同，這樣未來比較不會因為忘了要用特殊語法而產生 bug — 也算是利大於弊啦。</p>
+
+<h1 id="延伸閱讀">延伸閱讀</h1>
+
+<p><a href="https://nshipster.com/method-swizzling/">Method Swizzling -  NSHipster</a> （個人認為）必讀的 Method Swizzling 教學</p>
+
+<p><a href="https://juejin.im/entry/5a1fceddf265da43310d9985">iOS 界的毒瘤：Method Swizzle</a> 對於 Method Swizzling 很詳細的一篇分析（簡體中文文章）</p>
+
+  </div>
+
+
+</article>
+
+<div id="disqus_thread"></div>
+<script>
+    /**
+     *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+     *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables
+     */
+    /*
+    var disqus_config = function () {
+        this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+        this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+    };
+    */
+    (function() {  // DON'T EDIT BELOW THIS LINE
+        var d = document, s = d.createElement('script');
+
+        s.src = '//project-etc.disqus.com/embed.js';
+
+        s.setAttribute('data-timestamp', +new Date());
+        (d.head || d.body).appendChild(s);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
+
+
+      </div>
+    </div>
+
+    <footer class="site-footer">
+
+  <div class="wrapper">
+    <div class="footer-col-wrapper">
+      <div class="footer-col footer-col-1 footer-content">
+        <ul class="social-media-list">
+          
+          <li>
+            <a href="https://github.com/cyhsutw"><span class="icon icon--github"><svg viewBox="0 0 16 16"><path fill="#828282" d="M7.999,0.431c-4.285,0-7.76,3.474-7.76,7.761 c0,3.428,2.223,6.337,5.307,7.363c0.388,0.071,0.53-0.168,0.53-0.374c0-0.184-0.007-0.672-0.01-1.32 c-2.159,0.469-2.614-1.04-2.614-1.04c-0.353-0.896-0.862-1.135-0.862-1.135c-0.705-0.481,0.053-0.472,0.053-0.472 c0.779,0.055,1.189,0.8,1.189,0.8c0.692,1.186,1.816,0.843,2.258,0.645c0.071-0.502,0.271-0.843,0.493-1.037 C4.86,11.425,3.049,10.76,3.049,7.786c0-0.847,0.302-1.54,0.799-2.082C3.768,5.507,3.501,4.718,3.924,3.65 c0,0,0.652-0.209,2.134,0.796C6.677,4.273,7.34,4.187,8,4.184c0.659,0.003,1.323,0.089,1.943,0.261 c1.482-1.004,2.132-0.796,2.132-0.796c0.423,1.068,0.157,1.857,0.077,2.054c0.497,0.542,0.798,1.235,0.798,2.082 c0,2.981-1.814,3.637-3.543,3.829c0.279,0.24,0.527,0.713,0.527,1.437c0,1.037-0.01,1.874-0.01,2.129 c0,0.208,0.14,0.449,0.534,0.373c3.081-1.028,5.302-3.935,5.302-7.362C15.76,3.906,12.285,0.431,7.999,0.431z"/></svg>
+</span><span class="username">cyhsutw</span></a>
+
+          </li>
+          
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</footer>
+
+
+  </body>
+
+</html>
